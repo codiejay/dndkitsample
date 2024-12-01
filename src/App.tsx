@@ -36,15 +36,18 @@ function generateId(): string {
 function DraggableCard({
   id,
   children,
+  isDraggedOver = false,
 }: {
   id: string;
   children: React.ReactNode;
+  isDraggedOver?: boolean;
 }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } =
     useDraggable({
       id,
       data: {
         type: "card",
+        content: children,
       },
     });
 
@@ -54,7 +57,7 @@ function DraggableCard({
       : undefined,
     padding: "16px",
     margin: "8px",
-    backgroundColor: "white",
+    backgroundColor: isDragging ? "#4444ff" : "white",
     borderRadius: "8px",
     boxShadow: isDragging
       ? "0 5px 15px rgba(0,0,0,0.2)"
@@ -62,7 +65,7 @@ function DraggableCard({
     cursor: isDragging ? "grabbing" : "grab",
     touchAction: "none",
     opacity: isDragging ? 0.5 : 1,
-    transition: "box-shadow 0.2s, opacity 0.2s",
+    transition: "box-shadow 0.2s, opacity 0.2s, background-color 0.2s",
   };
 
   return (
@@ -215,15 +218,22 @@ export default function App() {
   const [activeContent, setActiveContent] = useState<string>("");
 
   const handleDragStart = (event: any) => {
+    // Get the item that's starting to be dragged
     const { active } = event;
 
+    // If nothing is being dragged, do nothing
     if (!active) return;
 
+    // Remember which item is being dragged by saving its ID
     setActiveId(active.id);
 
+    // If we're dragging an item that's already in a section (not from supply)
     if (active.data.current?.type === "section-item") {
+      // Look through all sections
       Object.values(sections).forEach((section) => {
+        // Try to find the item we're dragging
         const item = section.items.find((item) => item?.id === active.id);
+        // If we found it, save its content
         if (item) {
           setActiveContent(item.content);
         }
@@ -232,101 +242,48 @@ export default function App() {
   };
 
   const handleDragEnd = (event: any) => {
-    setActiveId(null);
-    setActiveContent("");
-
     const { active, over } = event;
-
     if (!active || !over) return;
 
     if (active.data.current?.type === "card") {
-      const sectionId = over.id.replace("section-", "");
-      const item = supplyingItems.find((item) => item?.id === active.id);
+      const sectionId = over.id.startsWith("section-")
+        ? over.id.replace("section-", "")
+        : findContainer(over.id);
 
-      if (item && sections[sectionId]) {
-        const newItem = { ...item, id: generateId() };
-        setSections((prevSections) => ({
-          ...prevSections,
+      if (!sectionId || !sections[sectionId]) return;
+
+      let insertIndex = sections[sectionId].items.length;
+      if (!over.id.startsWith("section-")) {
+        insertIndex = sections[sectionId].items.findIndex(
+          (item) => item.id === over.id
+        );
+        if (insertIndex === -1) insertIndex = sections[sectionId].items.length;
+      }
+
+      // Create new item with a guaranteed unique ID
+      const newItem = {
+        id: generateId(),
+        content: active.data.current.content.props.children,
+      };
+
+      setSections((prev) => {
+        const cleanedItems = prev[sectionId].items.filter(
+          (item) => !item.id.startsWith("temp-")
+        );
+
+        return {
+          ...prev,
           [sectionId]: {
-            ...prevSections[sectionId],
-            items: [...prevSections[sectionId].items, newItem],
-          },
-        }));
-      }
-      return;
-    }
-
-    const activeId = active.id;
-    const overId = over.id;
-
-    if (activeId === overId) return;
-
-    let sourceSectionId = "";
-    let destinationSectionId = "";
-    let sourceIndex = -1;
-    let destinationIndex = -1;
-
-    Object.entries(sections).forEach(([sectionId, section]) => {
-      if (!section || !Array.isArray(section.items)) return;
-
-      const sIndex = section.items.findIndex((item) => item?.id === activeId);
-      const dIndex = section.items.findIndex((item) => item?.id === overId);
-
-      if (sIndex !== -1) {
-        sourceSectionId = sectionId;
-        sourceIndex = sIndex;
-      }
-      if (dIndex !== -1) {
-        destinationSectionId = sectionId;
-        destinationIndex = dIndex;
-      }
-    });
-
-    if (over.id.startsWith("section-")) {
-      destinationSectionId = over.id.replace("section-", "");
-      destinationIndex = sections[destinationSectionId]?.items?.length || 0;
-    }
-
-    if (!sourceSectionId || sourceIndex === -1) return;
-
-    setSections((prevSections) => {
-      const newSections = { ...prevSections };
-      const sourceItems = [...(newSections[sourceSectionId]?.items || [])];
-      const [movedItem] = sourceItems.splice(sourceIndex, 1);
-
-      if (!movedItem) return prevSections;
-
-      if (sourceSectionId === destinationSectionId) {
-        sourceItems.splice(destinationIndex, 0, movedItem);
-        newSections[sourceSectionId] = {
-          ...newSections[sourceSectionId],
-          items: sourceItems,
-        };
-      } else {
-        newSections[sourceSectionId] = {
-          ...newSections[sourceSectionId],
-          items: sourceItems,
-        };
-
-        if (newSections[destinationSectionId]) {
-          newSections[destinationSectionId] = {
-            ...newSections[destinationSectionId],
+            ...prev[sectionId],
             items: [
-              ...newSections[destinationSectionId].items.slice(
-                0,
-                destinationIndex
-              ),
-              movedItem,
-              ...newSections[destinationSectionId].items.slice(
-                destinationIndex
-              ),
+              ...cleanedItems.slice(0, insertIndex),
+              newItem,
+              ...cleanedItems.slice(insertIndex),
             ],
-          };
-        }
-      }
-
-      return newSections;
-    });
+          },
+        };
+      });
+    }
   };
 
   /**
@@ -339,82 +296,100 @@ export default function App() {
     );
   };
 
-  /**
-   * Real-time drag handling - This is the core of the smooth animation
-   * Triggered continuously as items are dragged over different positions
-   *
-   * This function:
-   * 1. Removes item from its original section
-   * 2. Inserts it into the new section
-   * 3. Updates the UI before the actual drop occurs
-   */
   const handleDragOver = (event: any) => {
-    console.log("handleDragOver", event);
+    // Get the item being dragged (active) and what it's being dragged over (over)
     const { active, over } = event;
-    if (!active || !over) return;
+    if (!active || !over) return; // If either is missing, stop here
 
-    const activeId = active.id;
     const overId = over.id;
 
-    // TODAY Make cards from supplyingItems "blue" with unique ID
-    // So can go into existing sections.
-
-    // Handle two types of "over" scenarios:
-    // 1. Over a section (section-a, section-b, etc.)
-    // 2. Over an item within a section
+    // Figure out which section were hovering over
+    // If were directly over a section (starts with "section-"), remove that prefix
+    // Otherwise, find which section contains the item we're hovering over
     const overSectionId = over.id.startsWith("section-")
       ? over.id.replace("section-", "")
       : findContainer(over.id);
 
-    const activeSectionId = findContainer(activeId);
+    if (!overSectionId) return; // If we can't find a valid section, stop here
 
-    // Don't do anything if we're dragging within the same section
-    if (!activeSectionId || !overSectionId || activeSectionId === overSectionId)
-      return;
+    // PART 1: Handling items dragged from the supply section
+    if (active.data.current?.type === "card") {
+      setSections((prev) => {
+        const overSection = prev[overSectionId]; // Get the target section
 
-    setSections((prev) => {
-      const activeSection = prev[activeSectionId];
-      const overSection = prev[overSectionId];
+        // Find where in the list we should insert the item
+        const overIndex = overSection.items.findIndex(
+          (item) => item.id === overId
+        );
 
-      // Calculate the precise insertion point for the dragged item
-      const overIndex = overSection.items.findIndex(
-        (item) => item.id === overId
-      );
-      const activeIndex = activeSection.items.findIndex(
-        (item) => item.id === activeId
-      );
+        // If we found a specific position use it, otherwise add to the end
+        const newIndex = overIndex >= 0 ? overIndex : overSection.items.length;
 
-      // If not over a specific item, append to the end
-      const newIndex = overIndex === -1 ? overSection.items.length : overIndex;
-      // const newIndex = overSection.items.length;
+        // Create a temporary version of the dragged item
+        const tempItem = {
+          id: active.id,
+          content: active.data.current.content.props.children,
+        };
 
-      console.log("activeID", activeId);
-      console.log("overID", overId);
-      console.log("activeIndex", activeIndex);
-      console.log("overIndex", overIndex);
-      console.log("newIndex", newIndex);
-      console.log("activeSectionID", activeSectionId);
-      console.log("overSectionID", overSectionId);
-      console.log("overSectionItems", overSection.items);
-      // Create new state with the item moved to its new position
-      return {
-        ...prev,
-        [activeSectionId]: {
-          ...activeSection,
-          // Remove item from original section
-          items: activeSection.items.filter((item) => item.id !== activeId),
-        },
-        [overSectionId]: {
-          ...overSection,
-          // Insert item at the exact hover position
-          items: [
-            ...overSection.items.slice(0, newIndex),
-            activeSection.items[activeIndex],
-            ...overSection.items.slice(newIndex),
-          ],
-        },
-      };
-    });
+        // Make a copy of the items and insert the temp item at the right spot
+        const newItems = [...overSection.items];
+        newItems.splice(newIndex, 0, tempItem);
+
+        // Return the updated sections with the new item in place
+        return {
+          ...prev,
+          [overSectionId]: {
+            ...overSection,
+            items: newItems,
+          },
+        };
+      });
+    }
+    // PART 2: Handling items dragged between sections
+    else {
+      // Find which section the dragged item came from
+      const activeSectionId = findContainer(active.id);
+
+      // If it's in the same section or we can't find the source, stop here
+      if (!activeSectionId || activeSectionId === overSectionId) return;
+
+      setSections((prev) => {
+        // Get both the source and target sections
+        const activeSection = prev[activeSectionId];
+        const overSection = prev[overSectionId];
+
+        // Find the positions in both lists
+        const activeIndex = activeSection.items.findIndex(
+          (item) => item.id === active.id
+        );
+        const overIndex = overSection.items.findIndex(
+          (item) => item.id === overId
+        );
+
+        // Calculate where to put the item in the new section
+        const newIndex =
+          overIndex === -1 ? overSection.items.length : overIndex;
+
+        // Return updated sections:
+        // 1. Remove item from old section
+        // 2. Add item to new section at the right position
+        return {
+          ...prev,
+          [activeSectionId]: {
+            ...activeSection,
+            items: activeSection.items.filter((item) => item.id !== active.id),
+          },
+          [overSectionId]: {
+            ...overSection,
+            items: [
+              ...overSection.items.slice(0, newIndex),
+              activeSection.items[activeIndex],
+              ...overSection.items.slice(newIndex),
+            ],
+          },
+        };
+      });
+    }
   };
 
   return (

@@ -5,7 +5,7 @@ interface Item {
 
 interface Section {
   title: string;
-  items: Item[];
+  items: { id: string }[];
 }
 
 interface DroppableSectionProps {

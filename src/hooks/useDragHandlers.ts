@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { Section } from "../types";
 import { findContainer, generateId } from "../utils/helpers";
-import { Active, Over } from "@dnd-kit/core";
 
 export function useDragHandlers() {
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -10,18 +9,19 @@ export function useDragHandlers() {
   const handleDragStart = (event: any, sections: Record<string, Section>) => {
     console.log("handleDragStart");
     const { active } = event;
+    console.log("handleDragStart active", active);
     if (!active) return;
 
     setActiveId(active.id);
 
-    if (active.data.current?.type === "section-item") {
-      Object.values(sections).forEach((section) => {
-        const item = section.items.find((item) => item?.id === active.id);
-        if (item) {
-          setActiveContent(item.content);
-        }
-      });
-    }
+    // if (active.data.current?.type === "section-item") {
+    Object.values(sections).forEach((section) => {
+      const item = section.items.find((item) => item?.id === active.id);
+      if (item) {
+        setActiveContent(item.id);
+      }
+    });
+    // }
   };
 
   const handleDragEnd = (
@@ -101,7 +101,7 @@ function handleSectionDragEnd(
   const activeItem = activeSection.items[activeIndex];
   const generatedItem = {
     id: generateId(),
-    content: activeItem.content,
+    content: activeItem.id,
   };
   const newSectionsData = {
     ...sections,
@@ -109,7 +109,7 @@ function handleSectionDragEnd(
       ...activeSection,
       items: [
         ...activeSection.items.slice(0, activeIndex),
-        generatedItem,
+        // generatedItem,
         ...activeSection.items.slice(activeIndex + 1),
       ],
     },
@@ -172,12 +172,12 @@ function handleSectionDragOver(
   sections: Record<string, Section>,
   setSections: React.Dispatch<React.SetStateAction<Record<string, Section>>>
 ) {
-  console.log("active", active);
-  console.log("over", over);
-  console.log("overSectionId", overSectionId);
-  console.log("sections", sections);
-  console.log("setSections", setSections);
-  console.log("--------------------------------");
+  // console.log("active", active);
+  // console.log("over", over);
+  // console.log("overSectionId", overSectionId);
+  // console.log("sections", sections);
+  // console.log("setSections", setSections);
+  // console.log("--------------------------------");
   //Dragging from supply logic for sorting animation
   if (active.data.current?.type === "card") {
     if (over.id.startsWith("section-")) return;
@@ -188,7 +188,7 @@ function handleSectionDragOver(
     );
     const newIndex = overIndex === -1 ? overSection.items.length : overIndex;
 
-    return setSections((prev) => ({
+    setSections((prev) => ({
       ...prev,
       [overSectionId]: {
         ...overSection,
@@ -204,36 +204,38 @@ function handleSectionDragOver(
     }));
   }
 
-  // Regular section-to-section dragging
-  const activeSectionId = findContainer(sections, active.id);
-  if (!activeSectionId || activeSectionId === overSectionId) return;
+  if (active.data.current?.type === "section-item") {
+    // Regular section-to-section dragging
+    const activeSectionId = findContainer(sections, active.id);
+    if (!activeSectionId || activeSectionId === overSectionId) return;
 
-  setSections((prev) => {
-    const activeSection = prev[activeSectionId];
-    const overSection = prev[overSectionId];
-    const activeIndex = activeSection.items.findIndex(
-      (item) => item.id === active.id
-    );
-    const overIndex = overSection.items.findIndex(
-      (item) => item.id === over.id
-    );
+    setSections((prev) => {
+      const activeSection = prev[activeSectionId];
+      const overSection = prev[overSectionId];
+      const activeIndex = activeSection.items.findIndex(
+        (item) => item.id === active.id
+      );
+      const overIndex = overSection.items.findIndex(
+        (item) => item.id === over.id
+      );
 
-    const newIndex = overIndex === -1 ? overSection.items.length : overIndex;
+      const newIndex = overIndex === -1 ? overSection.items.length : overIndex;
 
-    return {
-      ...prev,
-      [activeSectionId]: {
-        ...activeSection,
-        items: activeSection.items.filter((item) => item.id !== active.id),
-      },
-      [overSectionId]: {
-        ...overSection,
-        items: [
-          ...overSection.items.slice(0, newIndex),
-          activeSection.items[activeIndex],
-          ...overSection.items.slice(newIndex),
-        ],
-      },
-    };
-  });
+      return {
+        ...prev,
+        [activeSectionId]: {
+          ...activeSection,
+          items: activeSection.items.filter((item) => item.id !== active.id),
+        },
+        [overSectionId]: {
+          ...overSection,
+          items: [
+            ...overSection.items.slice(0, newIndex),
+            activeSection.items[activeIndex],
+            ...overSection.items.slice(newIndex),
+          ],
+        },
+      };
+    });
+  }
 }

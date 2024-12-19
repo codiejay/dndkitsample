@@ -2,6 +2,7 @@ import { Item } from "../types";
 import { DraggableCard } from "./DraggableCard";
 
 export const SupplySection = ({ items }: { items: Item[] }) => {
+  console.log("SupplySection items", items);
   return (
     <div
       style={{

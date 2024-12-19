@@ -16,7 +16,7 @@ export const SupplySection = ({ items }: { items: Item[] }) => {
         <DraggableCard key={item.id} id={item.id}>
           <div
             style={{
-              backgroundColor: "#ff4444",
+              backgroundColor: "#4454ff",
               padding: "20px",
               borderRadius: "4px",
               color: "white",

@@ -61,10 +61,9 @@ export function useDragHandlers() {
       ? over.id.replace("section-", "")
       : findContainer(sections, over.id);
 
-    if (!overSectionId) return;
+    // if (!overSectionId) return;
 
-    console.log({ active, over, overSectionId });
-    if (active.data.current?.type === "section-item") {
+    if (active.data.current?.type === "section-item" || active.data.current?.type === "card") {
       handleSectionDragOver(active, over, overSectionId, sections, setSections);
     }
   };
@@ -132,6 +131,31 @@ function handleSectionDragOver(
   sections: Record<string, Section>,
   setSections: React.Dispatch<React.SetStateAction<Record<string, Section>>>
 ) {
+
+  //Dragging from supply logic for sorting animation
+  if (active.data.current?.type === "card") {
+    if (over.id.startsWith('section-')) return;
+
+    const overSection = sections[overSectionId];
+    const overIndex = overSection.items.findIndex(
+      (item) => item.id === over.id
+    );
+    const newIndex = overIndex === -1 ? overSection.items.length : overIndex;
+
+    return setSections((prev) => ({
+      ...prev,
+      [overSectionId]: {
+        ...overSection,
+        items: [
+          ...overSection.items.slice(0, newIndex),
+          { id: generateId(), content: active.data.current.content.props.children },
+          ...overSection.items.slice(newIndex),
+        ],
+      },
+    }));
+  }
+
+  // Regular section-to-section dragging
   const activeSectionId = findContainer(sections, active.id);
   if (!activeSectionId || activeSectionId === overSectionId) return;
 

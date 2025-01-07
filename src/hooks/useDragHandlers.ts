@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { Section } from "../types";
 import { findContainer, generateId } from "../utils/helpers";
-import { Active, Over } from "@dnd-kit/core";
 
 export function useDragHandlers() {
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -94,15 +93,23 @@ function handleSectionDragEnd(
 ) {
   const sectionId = findContainer(sections, over.id);
   if (!sectionId || !sections[sectionId]) return;
+  
+  // Use the originalId from the data if available, otherwise fall back to active.id
+  const originalId = active.data?.current?.originalId || active.id;
+  
   const activeSection = sections[sectionId];
   const activeIndex = activeSection.items.findIndex(
-    (item) => item.id === active.id
+    (item) => item.id === originalId
   );
+  
+  if (activeIndex === -1) return; // Guard against item not found
+  
   const activeItem = activeSection.items[activeIndex];
   const generatedItem = {
     id: generateId(),
     content: activeItem.content,
   };
+
   const newSectionsData = {
     ...sections,
     [sectionId]: {

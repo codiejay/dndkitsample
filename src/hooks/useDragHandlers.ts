@@ -94,11 +94,15 @@ function handleSectionDragEnd(
   const sectionId = findContainer(sections, over.id);
   if (!sectionId || !sections[sectionId]) return;
 
-  const originalId = active.data?.current?.originalId || active.id;
-
   const activeSection = sections[sectionId];
+  const originalId = active.data?.current?.originalId || active.id;
+  
+  // Find the indices for both active and over items
   const activeIndex = activeSection.items.findIndex(
     (item) => item.id === originalId
+  );
+  const overIndex = activeSection.items.findIndex(
+    (item) => item.id === over.id
   );
   
   if (activeIndex === -1) return;
@@ -109,17 +113,19 @@ function handleSectionDragEnd(
     content: activeItem.content,
   };
 
+  // Create new array with items in the correct order
+  const newItems = [...activeSection.items];
+  newItems.splice(activeIndex, 1); // Remove from old position
+  newItems.splice(overIndex, 0, generatedItem); // Insert at new position
+
   const newSectionsData = {
     ...sections,
     [sectionId]: {
       ...activeSection,
-      items: [
-        ...activeSection.items.slice(0, activeIndex),
-        generatedItem,
-        ...activeSection.items.slice(activeIndex + 1),
-      ],
+      items: newItems,
     },
   };
+  
   setSections(newSectionsData);
 }
 

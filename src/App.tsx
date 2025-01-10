@@ -1,13 +1,13 @@
 import { DndContext, DragOverlay, useDroppable } from "@dnd-kit/core";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { useDragHandlers } from "./hooks/useDragHandlers";
 import { DroppableSectionProps, Item, Section } from "./types";
 
 import { useDraggable } from "@dnd-kit/core";
 import { SortableContext, useSortable } from "@dnd-kit/sortable";
 import { verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { v4 } from "uuid";
+import "./styles.css";
 interface DraggableCardProps {
   id: string;
   children: React.ReactNode;
@@ -15,42 +15,60 @@ interface DraggableCardProps {
 }
 
 function DraggableCard({ id, children, item }: DraggableCardProps) {
-  const { attributes, listeners, setNodeRef } = useDraggable({
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id,
     data: {
       stableId: item.stableId,
+      content: item.content,
     },
   });
 
   return (
-    <div ref={setNodeRef} {...attributes} {...listeners}>
+    <div
+      ref={setNodeRef}
+      {...attributes}
+      {...listeners}
+      className={`draggable-item ${isDragging ? "dragging" : ""}`}
+    >
       {children}
     </div>
   );
 }
 
-const SortableItem = ({
-  id,
-  children,
-}: {
-  id: string | number;
-  children: React.ReactNode;
-}) => {
-  const { attributes, listeners, setNodeRef } = useSortable({
-    id,
-  });
+const SortableItem = ({ item }: { item: Item }) => {
+  const { attributes, listeners, setNodeRef, isDragging, isOver } = useSortable(
+    {
+      id: item.id,
+      data: {
+        stableId: item.id,
+        content: item.content,
+      },
+    }
+  );
 
   return (
-    <div ref={setNodeRef} {...attributes} {...listeners}>
-      {children}
+    <div
+      ref={setNodeRef}
+      {...attributes}
+      {...listeners}
+      className={`draggable-item ${isDragging ? "dragging" : ""} ${
+        isOver ? "over" : ""
+      }`}
+    >
+      {item.content}
     </div>
   );
 };
 
 const DroppableSection = ({ id, section }: DroppableSectionProps) => {
-  const { setNodeRef } = useDroppable({ id });
+  const { setNodeRef, isOver } = useDroppable({
+    id,
+  });
   return (
-    <div ref={setNodeRef} style={{}}>
+    <div
+      ref={setNodeRef}
+      className={`droppable-section ${isOver ? "over" : ""}`}
+    >
       <div>
         <h2>{section.title}</h2>
       </div>
@@ -59,9 +77,7 @@ const DroppableSection = ({ id, section }: DroppableSectionProps) => {
         strategy={verticalListSortingStrategy}
       >
         {section.items.map((item) => (
-          <SortableItem key={item.id} id={item.id}>
-            <div>{item.id}</div>
-          </SortableItem>
+          <SortableItem key={item.id} item={item} />
         ))}
       </SortableContext>
     </div>
@@ -77,8 +93,12 @@ const supplyData = [
 ];
 
 export default function App() {
-  const [activeId, setActiveId] = useState<number | string | null>(null);
-  const [activeStableId, setActiveStableId] = useState<string | null>(null);
+  const [activeCard, setActiveCard] = useState<{
+    stableId: string;
+    id: string;
+    content: string;
+  } | null>(null);
+  // const [overItemId, setOverItemId] = useState<string | null>(null);
   const [supplyingItems, setSupplyingItems] = useState<
     { stableId: string; id: string; content: string }[]
   >(
@@ -114,20 +134,24 @@ export default function App() {
         content: item.content,
       }))
     );
-  }, [activeId]);
+  }, [activeCard]);
 
-  console.log("activeId", activeId);
-  console.log("activeStableId", activeStableId);
+  console.log("activeCard", activeCard);
 
   return (
     <DndContext
       onDragStart={(e) => {
-        console.log("onDragStart", e);
-        setActiveId(e.active.id);
-        setActiveStableId(e.active.data.current?.stableId);
+        console.log("App onDragStart :>> ", e);
+        if (!e.active.data.current) return;
+        setActiveCard({
+          stableId: e.active.data.current.stableId,
+          id: e.active.id as string,
+          content: e.active.data.current.content,
+        });
       }}
-      // onDragEnd={(e) => handleDragEnd(e, sections, setSections)}
-      onDragOver={(e) => console.log("onDragOver", e)}
+      onDragOver={(e) => {
+        console.log("App onDragOver :>> ", e);
+      }}
     >
       <div style={{ display: "flex", gap: "24px", padding: "20px" }}>
         <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
@@ -149,13 +173,7 @@ export default function App() {
       </div>
       {createPortal(
         <DragOverlay>
-          {activeId && (
-            <SortableItem id={activeId}>
-              <div>
-                {supplyData.find((item) => item.id === activeStableId)?.content}
-              </div>
-            </SortableItem>
-          )}
+          {activeCard && <SortableItem item={activeCard} />}
         </DragOverlay>,
         document.body
       )}

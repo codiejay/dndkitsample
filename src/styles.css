@@ -2,3 +2,42 @@
   font-family: sans-serif;
   text-align: center;
 }
+
+:root {
+  background-color: #FFFFFF;
+  filter: invert(90%);
+}
+
+.draggable-item {
+  padding: 8px 16px;
+  margin: 8px 0;
+  background-color: white;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  cursor: grab;
+  transition: all 0.15s ease;
+}
+
+.draggable-item.dragging {
+  background-color: #e0e0e0;
+  opacity: 0.5;
+}
+
+.draggable-item.over {
+  background-color: #f5f5f5;
+  border-color: #666;
+}
+
+.droppable-section {
+  padding: 16px;
+  background-color: transparent;
+  border: 2px dashed transparent;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+  min-height: 100px;
+}
+
+.droppable-section.over {
+  background-color: #f0f0f0;
+  border-color: #666;
+}

@@ -36,24 +36,37 @@ function DraggableCard({ id, children, item }: DraggableCardProps) {
 }
 
 const SortableItem = ({ item }: { item: Item }) => {
-  const { attributes, listeners, setNodeRef, isDragging, isOver } = useSortable(
-    {
-      id: item.id,
-      data: {
-        stableId: item.id,
-        content: item.content,
-      },
-    }
-  );
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    isDragging,
+    transform,
+    transition,
+  } = useSortable({
+    id: item.id,
+    data: {
+      stableId: item.id,
+      content: item.content,
+    },
+  });
+
+  const style = {
+    transform: transform
+      ? `translate3d(${transform.x}px, ${transform.y}px, 0)`
+      : undefined,
+    transition,
+  };
 
   return (
     <div
       ref={setNodeRef}
       {...attributes}
       {...listeners}
-      className={`draggable-item ${isDragging ? "dragging" : ""} ${
-        isOver ? "over" : ""
-      }`}
+      className={`draggable-item sortable-item-transition ${
+        isDragging ? "dragging" : ""
+      } `}
+      style={style}
     >
       {item.content}
     </div>
@@ -121,9 +134,16 @@ export default function App() {
       items: [
         { id: "7", content: "Item 7" },
         { id: "8", content: "Item 8" },
+        { id: "9", content: "Item 9" },
       ],
     },
-    { title: "c", items: [] },
+    {
+      title: "c",
+      items: [
+        { id: "10", content: "Item 10" },
+        { id: "11", content: "Item 11" },
+      ],
+    },
   ]);
 
   useEffect(() => {
@@ -135,8 +155,6 @@ export default function App() {
       }))
     );
   }, [activeCard]);
-
-  console.log("activeCard", activeCard);
 
   return (
     <DndContext

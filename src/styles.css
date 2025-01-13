@@ -41,3 +41,12 @@
   background-color: #f0f0f0;
   border-color: #666;
 }
+
+.draggable-item.indicator {
+  position: relative;
+  padding: 0;
+  height: 8px;
+  /* border-color: #2389ff; */
+  background-color: #56a1f8;
+}
+

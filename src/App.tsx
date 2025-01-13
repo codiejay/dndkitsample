@@ -1,4 +1,4 @@
-import { DndContext, DragOverlay, useDroppable } from "@dnd-kit/core";
+import { DndContext, DragOverlay, Modifier, useDroppable } from "@dnd-kit/core";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { DroppableSectionProps, Item, Section } from "./types";
@@ -9,6 +9,9 @@ import { verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { v4 } from "uuid";
 import { CSS } from "@dnd-kit/utilities";
 import "./styles.css";
+
+const AS_INDICATOR = false;
+
 interface DraggableCardProps {
   item: { stableId: string; id: string; content: string };
 }
@@ -56,15 +59,27 @@ const SortableItem = ({ item }: { item: Item }) => {
     transition,
   };
 
+  let className = "draggable-item";
+  if (AS_INDICATOR && isDragging) {
+    className += " indicator";
+  } else if (isDragging) {
+    className += " dragging";
+  }
+
+  let content: string | null = item.content;
+  if (AS_INDICATOR && isDragging) {
+    content = null;
+  }
+
   return (
     <div
       {...attributes}
       {...listeners}
-      className={`draggable-item ${isDragging ? "dragging" : ""} `}
+      className={className}
       ref={setNodeRef}
       style={style}
     >
-      {item.content}
+      {content}
     </div>
   );
 };

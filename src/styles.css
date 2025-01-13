@@ -20,7 +20,7 @@
 .draggable-item.dragging {
   background-color: #e0e0e0;
   opacity: 0.5;
- /* transition: none !important; /* Disable transitions while dragging */
+  /* transition: none !important; /* Disable transitions while dragging */
 }
 /* 
 .draggable-item.over {
@@ -40,9 +40,4 @@
 .droppable-section.over {
   background-color: #f0f0f0;
   border-color: #666;
-}
-
-/* Specific transition for transform changes */
-.sortable-item-transition {
-  transition: transform 200ms ease !important;
 }

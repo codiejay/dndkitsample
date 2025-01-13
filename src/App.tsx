@@ -7,6 +7,7 @@ import { useDraggable } from "@dnd-kit/core";
 import { SortableContext, useSortable } from "@dnd-kit/sortable";
 import { verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { v4 } from "uuid";
+import { CSS } from "@dnd-kit/utilities";
 import "./styles.css";
 interface DraggableCardProps {
   item: { stableId: string; id: string; content: string };
@@ -51,20 +52,16 @@ const SortableItem = ({ item }: { item: Item }) => {
   });
 
   const style = {
-    transform: transform
-      ? `translate3d(${transform.x}px, ${transform.y}px, 0)`
-      : undefined,
+    transform: CSS.Transform.toString(transform),
     transition,
   };
 
   return (
     <div
-      ref={setNodeRef}
       {...attributes}
       {...listeners}
-      className={`draggable-item sortable-item-transition ${
-        isDragging ? "dragging" : ""
-      } `}
+      className={`draggable-item ${isDragging ? "dragging" : ""} `}
+      ref={setNodeRef}
       style={style}
     >
       {item.content}
@@ -90,7 +87,7 @@ const DroppableSection = ({ section }: DroppableSectionProps) => {
       </div>
       <SortableContext
         id={section.id}
-        items={section.items.map((item) => item.id)}
+        items={section.items}
         strategy={verticalListSortingStrategy}
       >
         {section.items.map((item) => (
@@ -169,7 +166,7 @@ export default function App() {
   return (
     <DndContext
       onDragStart={(e) => {
-        console.log("App onDragStart :>> ", e);
+        // console.log("App onDragStart :>> ", e);
         const { active } = e;
         if (!active.data.current) return;
         setActiveCard({
@@ -179,8 +176,70 @@ export default function App() {
           inSection: active.data.current.sortable?.containerId ?? null,
         });
       }}
+      onDragEnd={(e) => {
+        // the only thing we need to do here is to save the reordering of the items
+        // in the section;
+        console.log("App onDragEnd :>> ", e);
+        const { active, over } = e;
+        if (!active || !over) return;
+        if (over.data.current?.entityType === "section") return;
+
+        const previousIndex = active.data.current?.sortable?.index;
+        const newIndex = over?.data.current?.sortable?.index;
+        if (previousIndex === newIndex) return;
+
+        // we need to update the sections with the new order of the items
+        // (new order is items up to the new index, then the active card,
+        // then the items after the new index); and we need to remove the
+        // active card from its previous place in the sequence
+        const newSections = sections.map((section) => {
+          if (section.id === active.data.current?.sortable?.containerId) {
+            const oldIndex = section.items.findIndex(
+              (item) => item.id === active.id
+            );
+            const newIndex = section.items.findIndex(
+              (item) => item.id === over.id
+            );
+
+            const newItems = Array.from(section.items);
+            const [movedItem] = newItems.splice(oldIndex, 1);
+            newItems.splice(newIndex, 0, movedItem);
+
+            return {
+              ...section,
+              items: newItems,
+            };
+          }
+          return section;
+        });
+
+        setSections(newSections);
+
+        // setSections((prevSections) => {
+        //   return prevSections.map((section) => {
+        //     if (section.id === active.data.current?.sortable?.containerId) {
+        //       const oldIndex = section.items.findIndex(
+        //         (item) => item.id === active.id
+        //       );
+        //       const newIndex = section.items.findIndex(
+        //         (item) => item.id === over.id
+        //       );
+
+        //       const newItems = Array.from(section.items);
+        //       const [movedItem] = newItems.splice(oldIndex, 1);
+        //       newItems.splice(newIndex, 0, movedItem);
+
+        //       return {
+        //         ...section,
+        //         items: newItems,
+        //       };
+        //     }
+        //     return section;
+        //   });
+        // });
+      }}
       onDragOver={(e) => {
-        console.log("App onDragOver :>> ", e);
+        // console.log("App onDragOver :>> ", e);
         const { active, over } = e;
 
         // When not dragging over anything, we should remove the active card

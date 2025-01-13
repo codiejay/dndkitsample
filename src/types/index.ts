@@ -4,12 +4,12 @@ interface Item {
 }
 
 interface Section {
+  id: string;
   title: string;
   items: Item[];
 }
 
 interface DroppableSectionProps {
-  id: string;
   section: Section;
 }
 

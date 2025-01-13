@@ -9,14 +9,12 @@ import { verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { v4 } from "uuid";
 import "./styles.css";
 interface DraggableCardProps {
-  id: string;
-  children: React.ReactNode;
   item: { stableId: string; id: string; content: string };
 }
 
-function DraggableCard({ id, children, item }: DraggableCardProps) {
+function DraggableCard({ item }: DraggableCardProps) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
-    id,
+    id: item.id,
     data: {
       stableId: item.stableId,
       content: item.content,
@@ -30,7 +28,7 @@ function DraggableCard({ id, children, item }: DraggableCardProps) {
       {...listeners}
       className={`draggable-item ${isDragging ? "dragging" : ""}`}
     >
-      {children}
+      {item.content}
     </div>
   );
 }
@@ -46,6 +44,7 @@ const SortableItem = ({ item }: { item: Item }) => {
   } = useSortable({
     id: item.id,
     data: {
+      entityType: "item",
       stableId: item.id,
       content: item.content,
     },
@@ -73,9 +72,13 @@ const SortableItem = ({ item }: { item: Item }) => {
   );
 };
 
-const DroppableSection = ({ id, section }: DroppableSectionProps) => {
+const DroppableSection = ({ section }: DroppableSectionProps) => {
   const { setNodeRef, isOver } = useDroppable({
-    id,
+    id: section.id,
+    data: {
+      entityType: "section",
+      sectionId: section.id,
+    },
   });
   return (
     <div
@@ -86,6 +89,7 @@ const DroppableSection = ({ id, section }: DroppableSectionProps) => {
         <h2>{section.title}</h2>
       </div>
       <SortableContext
+        id={section.id}
         items={section.items.map((item) => item.id)}
         strategy={verticalListSortingStrategy}
       >
@@ -106,12 +110,15 @@ const supplyData = [
 ];
 
 export default function App() {
-  const [activeCard, setActiveCard] = useState<{
-    stableId: string;
-    id: string;
-    content: string;
-  } | null>(null);
-  // const [overItemId, setOverItemId] = useState<string | null>(null);
+  const [activeCard, setActiveCard] = useState<
+    | {
+        stableId: string;
+        id: string;
+        content: string;
+        inSection: string | null;
+      }
+    | undefined
+  >(undefined);
   const [supplyingItems, setSupplyingItems] = useState<
     { stableId: string; id: string; content: string }[]
   >(
@@ -124,12 +131,14 @@ export default function App() {
 
   const [sections, setSections] = useState<
     {
+      id: string;
       title: string;
       items: { id: string; content: string }[];
     }[]
   >([
-    { title: "a", items: [{ id: "6", content: "Item 6" }] },
+    { id: "z238gfdbd", title: "a", items: [{ id: "6", content: "Item 6" }] },
     {
+      id: "vas4g3ev",
       title: "b",
       items: [
         { id: "7", content: "Item 7" },
@@ -138,6 +147,7 @@ export default function App() {
       ],
     },
     {
+      id: "f34y32eg",
       title: "c",
       items: [
         { id: "10", content: "Item 10" },
@@ -160,32 +170,116 @@ export default function App() {
     <DndContext
       onDragStart={(e) => {
         console.log("App onDragStart :>> ", e);
-        if (!e.active.data.current) return;
+        const { active } = e;
+        if (!active.data.current) return;
         setActiveCard({
-          stableId: e.active.data.current.stableId,
-          id: e.active.id as string,
-          content: e.active.data.current.content,
+          stableId: active.data.current.stableId,
+          id: active.id as string,
+          content: active.data.current.content,
+          inSection: active.data.current.sortable?.containerId ?? null,
         });
       }}
       onDragOver={(e) => {
         console.log("App onDragOver :>> ", e);
+        const { active, over } = e;
+
+        // When not dragging over anything, we should remove the active card
+        // if it was added to a section before; this ensures that the user
+        // can drop the card outside to remove it from the section
+        if (!over) {
+          if (activeCard?.inSection) {
+            setSections((prevSections) => {
+              return prevSections.map((section) => {
+                if (section.id === activeCard.inSection) {
+                  return {
+                    ...section,
+                    items: section.items.filter(
+                      (item) => item.id !== activeCard.id
+                    ),
+                  };
+                }
+                return section;
+              });
+            });
+          }
+          return;
+        }
+
+        if (!active || !activeCard) return;
+
+        if (over.data.current?.entityType === "item") {
+          // nothing to do here, we are just dragging over an item;
+          // this is because we are using the SortableContext to sort the items,
+          // it will automatically handle the visual feedback of the sorting of the items
+          return;
+        } else if (over.data.current?.entityType === "section") {
+          // when dragging over a section, we will add the card to the end of the section;
+          // however, we need to make sure the card is not already in the section
+          const sectionId = over.data.current?.sectionId;
+
+          // check if the card is already in the section, if so, do nothing
+          const section = sections.find((section) => section.id === sectionId);
+          if (!section) return;
+          const isCardInSection = section.items.some(
+            (item) => item.id === activeCard.id
+          );
+          if (isCardInSection) return;
+
+          // if the card is not in the section, add it to the end of the section;
+          // however, if the card was in another section before, we need to remove
+          // it from the other section
+          setSections((prevSections) => {
+            const prevSectionId = activeCard.inSection;
+            let indexToRemove = -1;
+            if (prevSectionId) {
+              indexToRemove = prevSections.findIndex(
+                (section) => section.id === prevSectionId
+              );
+            }
+            return prevSections.map((section) => {
+              if (section.id === sectionId) {
+                return {
+                  ...section,
+                  items: [
+                    ...section.items,
+                    { id: activeCard.id, content: activeCard.content },
+                  ],
+                };
+              }
+              // if the card was in another section before, we need to remove it from the other section
+              if (indexToRemove !== -1) {
+                prevSections[indexToRemove].items = prevSections[
+                  indexToRemove
+                ].items.filter((item) => item.id !== activeCard.id);
+              }
+              return section;
+            });
+          });
+
+          // after adding the card to the section, we need to update the active card
+          // to indicate that it was added to the section; this is needed to be able to
+          // remove the card from the section when it is dropped outside of the section
+          setActiveCard((prevCard) => {
+            if (!prevCard) return undefined;
+            return {
+              stableId: prevCard.stableId,
+              id: prevCard.id,
+              content: prevCard.content,
+              inSection: sectionId,
+            };
+          });
+        }
       }}
     >
       <div style={{ display: "flex", gap: "24px", padding: "20px" }}>
         <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
           {supplyingItems.map((item) => (
-            <DraggableCard key={item.id} id={item.id} item={item}>
-              <div>{item.content}</div>
-            </DraggableCard>
+            <DraggableCard key={item.id} item={item} />
           ))}
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
           {sections.map((section) => (
-            <DroppableSection
-              key={`${section.title}`}
-              id={`${section.title}`}
-              section={section}
-            />
+            <DroppableSection key={section.id} section={section} />
           ))}
         </div>
       </div>

@@ -3,10 +3,10 @@
   text-align: center;
 }
 
-:root {
+/* :root {
   background-color: #FFFFFF;
   filter: invert(90%);
-}
+} */
 
 .draggable-item {
   padding: 8px 16px;

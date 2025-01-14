@@ -229,32 +229,8 @@ export default function App() {
         });
 
         setSections(newSections);
-
-        // setSections((prevSections) => {
-        //   return prevSections.map((section) => {
-        //     if (section.id === active.data.current?.sortable?.containerId) {
-        //       const oldIndex = section.items.findIndex(
-        //         (item) => item.id === active.id
-        //       );
-        //       const newIndex = section.items.findIndex(
-        //         (item) => item.id === over.id
-        //       );
-
-        //       const newItems = Array.from(section.items);
-        //       const [movedItem] = newItems.splice(oldIndex, 1);
-        //       newItems.splice(newIndex, 0, movedItem);
-
-        //       return {
-        //         ...section,
-        //         items: newItems,
-        //       };
-        //     }
-        //     return section;
-        //   });
-        // });
       }}
       onDragOver={(e) => {
-        // console.log("App onDragOver :>> ", e);
         const { active, over } = e;
 
         // When not dragging over anything, we should remove the active card

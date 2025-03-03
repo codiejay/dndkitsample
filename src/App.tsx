@@ -1,4 +1,12 @@
-import { DndContext, DragOverlay, Modifier, useDroppable } from "@dnd-kit/core";
+import {
+  DndContext,
+  DragOverlay,
+  Modifier,
+  useDroppable,
+  closestCorners,
+  closestCenter,
+  pointerWithin,
+} from "@dnd-kit/core";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { DroppableSectionProps, Item, Section } from "./types";
@@ -114,11 +122,18 @@ const DroppableSection = ({ section }: DroppableSectionProps) => {
 };
 
 const supplyData = [
-  { id: "1", content: "Item 1" },
-  { id: "2", content: "Item 2" },
-  { id: "3", content: "Item 3" },
-  { id: "4", content: "Item 4" },
-  { id: "5", content: "Item 5" },
+  { id: "1", content: "Short item" },
+  {
+    id: "2",
+    content: "This is a medium length item that will wrap to the next line",
+  },
+  {
+    id: "3",
+    content:
+      "This is a much longer item with lots of content. It demonstrates how the card can expand vertically to fit multiple lines of text. The content will automatically wrap to new lines as needed.",
+  },
+  { id: "4", content: "Another short item" },
+  { id: "5", content: "Item with\nmultiple\nlines\nof text" },
 ];
 
 export default function App() {
@@ -148,22 +163,34 @@ export default function App() {
       items: { id: string; content: string }[];
     }[]
   >([
-    { id: "z238gfdbd", title: "a", items: [{ id: "6", content: "Item 6" }] },
+    {
+      id: "z238gfdbd",
+      title: "Section A",
+      items: [{ id: "6", content: "A regular card in section A" }],
+    },
     {
       id: "vas4g3ev",
-      title: "b",
+      title: "Section B",
       items: [
-        { id: "7", content: "Item 7" },
-        { id: "8", content: "Item 8" },
-        { id: "9", content: "Item 9" },
+        {
+          id: "7",
+          content:
+            "This is a longer card that demonstrates text wrapping capabilities. It contains more content to show how the height adjusts automatically.",
+        },
+        { id: "8", content: "Short card" },
+        { id: "9", content: "Card with\nmultiple\nline breaks" },
       ],
     },
     {
       id: "f34y32eg",
-      title: "c",
+      title: "Section C",
       items: [
-        { id: "10", content: "Item 10" },
-        { id: "11", content: "Item 11" },
+        { id: "10", content: "Medium length card that will need to wrap" },
+        {
+          id: "11",
+          content:
+            "Another card with some content that will wrap to the next line",
+        },
       ],
     },
   ]);
@@ -180,6 +207,9 @@ export default function App() {
 
   return (
     <DndContext
+      // collisionDetection={pointerWithin}
+      // collisionDetection={closestCorners}
+      // collisionDetection={closestCenter}
       onDragStart={(e) => {
         // console.log("App onDragStart :>> ", e);
         const { active } = e;
@@ -231,6 +261,7 @@ export default function App() {
         setSections(newSections);
       }}
       onDragOver={(e) => {
+        console.log("App onDragOver :>> ", e);
         const { active, over } = e;
 
         // When not dragging over anything, we should remove the active card

@@ -3,18 +3,23 @@
   text-align: center;
 }
 
-/* :root {
+:root {
   background-color: #FFFFFF;
   filter: invert(90%);
-} */
+}
 
 .draggable-item {
-  padding: 8px 16px;
+  padding: 12px 16px;
   margin: 8px 0;
   background-color: white;
   border: 1px solid #ddd;
   border-radius: 4px;
   cursor: grab;
+  /* min-height: 20px; */
+  width: 150px;
+  /* word-wrap: break-word; */
+  /* white-space: pre-wrap; */
+  line-height: 1.4;
 }
 
 .draggable-item.dragging {
